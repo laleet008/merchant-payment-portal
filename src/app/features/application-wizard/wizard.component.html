@@ -1,0 +1,120 @@
+<div class="container py-4 px-3 wizard">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">New merchant application</h1>
+    <div class="small text-muted draft-status" aria-live="polite" data-testid="draft-status">
+      @switch (draftStatus()) {
+        @case ('saving') {
+          <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Saving draft…
+        }
+        @case ('saved') {
+          Draft saved {{ draftSavedAt() | date: 'shortTime' }}
+        }
+        @case ('error') {
+          <span class="text-danger">Draft could not be saved — your work is still here.</span>
+        }
+        @default {
+          @if (draftRestored()) {
+            Draft restored{{ draftSavedAt() ? ' from ' + (draftSavedAt() | date: 'short') : '' }}
+          }
+        }
+      }
+    </div>
+  </div>
+
+  @if (draftRestored()) {
+    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2" role="status">
+      <span>We restored your saved draft. Sensitive fields (tax ID, SSN, banking) are never saved and must be re-entered.</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="discardDraft()">
+        Start over
+      </button>
+    </div>
+  }
+
+  <!-- Stepper -->
+  <nav aria-label="Application progress" class="mb-4">
+    <ol class="stepper list-unstyled d-flex gap-2 mb-2">
+      @for (label of steps; track label; let i = $index) {
+        <li class="flex-fill">
+          <button
+            type="button"
+            class="stepper-item w-100"
+            [class.active]="currentStep() === i + 1"
+            [class.done]="currentStep() > i + 1"
+            [disabled]="i + 1 > furthestStep()"
+            [attr.aria-current]="currentStep() === i + 1 ? 'step' : null"
+            (click)="goTo(i + 1)"
+          >
+            <span class="stepper-index">{{ i + 1 }}</span>
+            <span class="stepper-label d-none d-sm-inline">{{ label }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+    <div
+      class="progress"
+      role="progressbar"
+      aria-label="Progress"
+      [attr.aria-valuenow]="progress()"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      style="height: 4px"
+    >
+      <div class="progress-bar" [style.width.%]="progress()"></div>
+    </div>
+    <p class="visually-hidden" aria-live="polite">Step {{ currentStep() }} of {{ totalSteps }}: {{ steps[currentStep() - 1] }}</p>
+  </nav>
+
+  <form class="card shadow-sm" (submit)="$event.preventDefault(); onFormSubmit()" novalidate>
+    <div class="card-body p-3 p-md-4 wizard-step">
+      @switch (currentStep()) {
+        @case (1) {
+          <app-business-info-step [form]="businessForm" />
+        }
+        @case (2) {
+          <app-owner-info-step [form]="ownerForm" />
+        }
+        @case (3) {
+          <app-banking-info-step [form]="bankingForm" />
+        }
+        @case (4) {
+          <app-review-submit-step [data]="buildPayload()" (editStep)="goTo($event)" />
+          <div class="form-check mt-4">
+            <input
+              id="confirm"
+              type="checkbox"
+              class="form-check-input"
+              [formControl]="confirmed"
+              [class.is-invalid]="confirmed.touched && !confirmed.value"
+            />
+            <label for="confirm" class="form-check-label">
+              I confirm these details are accurate and the merchant has consented to this application.
+            </label>
+            @if (confirmed.touched && !confirmed.value) {
+              <div class="invalid-feedback">Please confirm before submitting.</div>
+            }
+          </div>
+          @if (submitError()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ submitError() }}</div>
+          }
+        }
+      }
+    </div>
+
+    <div class="card-footer bg-transparent d-flex justify-content-between gap-2 p-3">
+      <button type="button" class="btn btn-outline-secondary" [disabled]="currentStep() === 1" (click)="back()">
+        Back
+      </button>
+      @if (currentStep() < totalSteps) {
+        <button type="submit" class="btn btn-primary" data-testid="next">Next</button>
+      } @else {
+        <button type="submit" class="btn btn-success" data-testid="submit" [disabled]="submitting()">
+          @if (submitting()) {
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Submitting…
+          } @else {
+            Submit application
+          }
+        </button>
+      }
+    </div>
+  </form>
+</div>

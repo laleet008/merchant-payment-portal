@@ -1,0 +1,46 @@
+.wizard {
+  max-width: 960px;
+}
+
+.stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.9rem;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &.done {
+    color: var(--bs-success);
+    border-color: var(--bs-success);
+  }
+
+  &.active {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    font-weight: 600;
+  }
+}
+
+.stepper-index {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.draft-status {
+  min-height: 1.25rem;
+}

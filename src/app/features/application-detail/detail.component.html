@@ -1,0 +1,176 @@
+<div class="container py-4 px-3">
+  <a routerLink="/dashboard" class="d-inline-block mb-3 text-decoration-none">← Back to applications</a>
+
+  @if (isLoading()) {
+    <app-loading-state label="Loading application…" [rows]="4" />
+  } @else if (error()) {
+    <div class="alert alert-danger" role="alert">{{ error() }}</div>
+  } @else if (app(); as a) {
+    <header class="d-flex flex-wrap align-items-center gap-2 mb-4">
+      <h1 class="h3 mb-0 me-2">{{ a.businessName }}</h1>
+      <app-status-badge [status]="a.status" />
+      <span class="text-muted small ms-md-auto">
+        Ref {{ a.id }} · Submitted {{ a.createdAt | date: 'medium' }} by {{ users.displayName(a.submittedBy) }}
+      </span>
+    </header>
+
+    @if (reviewSuccess(); as decision) {
+      <div class="alert alert-success" role="status">
+        Decision recorded: application {{ decision === 'APPROVED' ? 'approved' : 'rejected' }}.
+      </div>
+    }
+
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <!-- Business -->
+        <section class="card shadow-sm mb-4" aria-labelledby="business-heading">
+          <div class="card-header bg-transparent"><h2 id="business-heading" class="h6 mb-0">Business</h2></div>
+          <div class="card-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Legal name</dt>
+              <dd class="col-sm-8">{{ a.businessName }}</dd>
+              <dt class="col-sm-4">Type</dt>
+              <dd class="col-sm-8">{{ businessTypeLabel() }}</dd>
+              <dt class="col-sm-4">Annual revenue</dt>
+              <dd class="col-sm-8">{{ a.annualRevenue | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+              <dt class="col-sm-4">Tax ID (EIN)</dt>
+              <dd class="col-sm-8 mb-0"><app-masked-field [value]="a.taxId" label="tax ID" /></dd>
+            </dl>
+          </div>
+        </section>
+
+        <!-- Owner -->
+        <section class="card shadow-sm mb-4" aria-labelledby="owner-heading">
+          <div class="card-header bg-transparent"><h2 id="owner-heading" class="h6 mb-0">Owner</h2></div>
+          <div class="card-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Name</dt>
+              <dd class="col-sm-8">{{ a.ownerName }}</dd>
+              <dt class="col-sm-4">Email</dt>
+              <dd class="col-sm-8 text-break">{{ a.ownerEmail }}</dd>
+              <dt class="col-sm-4">Phone</dt>
+              <dd class="col-sm-8">{{ a.ownerPhone }}</dd>
+              <dt class="col-sm-4">SSN</dt>
+              <dd class="col-sm-8 mb-0">
+                @if (a.ownerSsn) {
+                  <app-masked-field [value]="a.ownerSsn" label="SSN" [revealRoles]="['REVIEWER', 'ADMIN']" />
+                } @else {
+                  <span class="text-muted fst-italic" data-testid="ssn-restricted">Restricted</span>
+                }
+              </dd>
+            </dl>
+          </div>
+        </section>
+
+        <!-- Banking -->
+        <section class="card shadow-sm mb-4" aria-labelledby="banking-heading">
+          <div class="card-header bg-transparent"><h2 id="banking-heading" class="h6 mb-0">Banking</h2></div>
+          <div class="card-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Routing number</dt>
+              <dd class="col-sm-8"><app-masked-field [value]="a.routingNumber" label="routing number" /></dd>
+              <dt class="col-sm-4">Account number</dt>
+              <dd class="col-sm-8 mb-0"><app-masked-field [value]="a.bankAccount" label="account number" /></dd>
+            </dl>
+          </div>
+        </section>
+
+        <!-- Risk history -->
+        <section class="card shadow-sm" aria-labelledby="history-heading">
+          <div class="card-header bg-transparent"><h2 id="history-heading" class="h6 mb-0">Risk history</h2></div>
+          <ul class="list-group list-group-flush">
+            @for (entry of history(); track entry.date + entry.reviewer) {
+              <li class="list-group-item">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                  <strong>{{ users.displayName(entry.reviewer) }}</strong>
+                  <small class="text-muted">{{ entry.date | date: 'medium' }}</small>
+                </div>
+                <p class="mb-1">{{ entry.note }}</p>
+                @switch (entry.decision) {
+                  @case ('APPROVED') { <span class="badge text-bg-success">Approved</span> }
+                  @case ('REJECTED') { <span class="badge text-bg-danger">Rejected</span> }
+                  @default { <span class="badge text-bg-light border">Note</span> }
+                }
+              </li>
+            } @empty {
+              <li class="list-group-item text-muted">No review activity yet.</li>
+            }
+          </ul>
+        </section>
+      </div>
+
+      <aside class="col-lg-4">
+        <section class="card shadow-sm mb-4" aria-labelledby="meta-heading">
+          <div class="card-header bg-transparent"><h2 id="meta-heading" class="h6 mb-0">Assignment</h2></div>
+          <div class="card-body">
+            <dl class="mb-0">
+              <dt class="small text-muted">Assigned reviewer</dt>
+              <dd>{{ users.displayName(a.assignedReviewer) }}</dd>
+              <dt class="small text-muted">Last updated</dt>
+              <dd class="mb-0">{{ a.updatedAt | date: 'medium' }}</dd>
+            </dl>
+          </div>
+        </section>
+
+            @if (canReview()) {
+          <section id="review" class="card shadow-sm border-warning" aria-labelledby="review-heading" data-testid="review-panel">
+            <div class="card-header bg-warning-subtle"><h2 id="review-heading" class="h6 mb-0">Review decision</h2></div>
+            <div class="card-body">
+              @if (awaitingReview()) {
+                <form [formGroup]="reviewForm" (ngSubmit)="submitReview()" novalidate>
+                  <fieldset class="mb-3">
+                    <legend class="form-label fs-6">Decision</legend>
+                    <div class="btn-group w-100" role="group">
+                      <input type="radio" class="btn-check" id="decision-approve" value="APPROVED" formControlName="decision" />
+                      <label class="btn btn-outline-success" for="decision-approve">Approve</label>
+                      <input type="radio" class="btn-check" id="decision-reject" value="REJECTED" formControlName="decision" />
+                      <label class="btn btn-outline-danger" for="decision-reject">Reject</label>
+                    </div>
+                    @if (fieldError('decision', 'A decision'); as msg) {
+                      <div class="text-danger small mt-1">{{ msg }}</div>
+                    }
+                  </fieldset>
+                  <div class="mb-3">
+                    <label for="note" class="form-label">Risk note</label>
+                    <textarea
+                      id="note"
+                      class="form-control"
+                      rows="4"
+                      formControlName="note"
+                      [attr.maxlength]="noteMaxLength"
+                      [class.is-invalid]="fieldError('note', 'Note')"
+                      aria-describedby="note-help note-error"
+                    ></textarea>
+                    <div id="note-help" class="form-text">Minimum 10 characters. Recorded in the risk history.</div>
+                    @if (fieldError('note', 'Note'); as msg) {
+                      <div id="note-error" class="invalid-feedback">{{ msg }}</div>
+                    }
+                  </div>
+                  @if (reviewError()) {
+                    <div class="alert alert-danger py-2" role="alert">{{ reviewError() }}</div>
+                  }
+                  <button type="submit" class="btn btn-primary w-100" [disabled]="reviewing()">
+                    @if (reviewing()) {
+                      <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Submitting…
+                    } @else {
+                      Submit decision
+                    }
+                  </button>
+                </form>
+              } @else {
+                <p class="text-muted mb-0">
+                  @switch (a.status) {
+                    @case ('SUBMITTED') { Waiting for an administrator to assign a reviewer. }
+                    @case ('APPROVED') { This application has been approved. }
+                    @case ('REJECTED') { This application has been rejected. }
+                    @default { No review action is available. }
+                  }
+                </p>
+              }
+            </div>
+          </section>
+        }
+      </aside>
+    </div>
+  }
+</div>

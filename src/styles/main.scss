@@ -1,0 +1,23 @@
+// bootstrap css is loaded from angular.json
+
+:root {
+  --bs-body-bg: #f6f7f9;
+  --bs-font-sans-serif: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+body {
+  background-color: var(--bs-body-bg);
+}
+
+.card {
+  --bs-card-bg: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+.font-monospace {
+  letter-spacing: 0.02em;
+}
